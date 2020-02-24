@@ -13,42 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#id: "org.mal-lang.examplelang"
+#id: "An abstract version of azureLang."
 #version: "1.0.0"
 
 category System {
-  asset Network {
-    | access
-      -> hosts.connect
-  }
+  
+  abstract asset resource {
+    
+}
+    abstract asset Role
+      user info: "In Role Based Access Control (RBAC) system of Azure, the role that be assigned to a security principal determines who can do what from different scopes."
+    {
+    
+}
+    
+    asset ReaderRole
+        user info: "The ReadRole is one of the three basic roles in Azure. It only have read previleges in different scopes."
+        {
+        
+}
+    OwnerRole extends ReaderRole
+    {
+    
+}
 
-  asset Host {
-    | connect
-      -> access
-    | authenticate
-      -> access
-    | guessPassword
-      -> guessedPassword
-    | guessedPassword [Exponential(0.02)]
-      -> authenticate
-    & access
-  }
-
-  asset User {
-    | attemptPhishing
-      -> phish
-    | phish [Exponential(0.1)]
-      -> passwords.obtain
-  }
-
-  asset Password {
-    | obtain
-      -> host.authenticate
-  }
+    
+    
+ 
 }
 
 associations {
-  Network [networks] * <-- NetworkAccess --> * [hosts] Host
-  Host [host] 1 <-- Credentials --> * [passwords] Password
-  User [user] 1 <-- Credentials --> * [passwords] Password
+  
 }
