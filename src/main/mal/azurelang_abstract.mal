@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 #id: "An abstract version of azureLang."
-#version: "0.0.1-SNAPSHOT"
+#version: "0.0.1"
 
 include "core.mal"
-include "RBAC.mal"
+//include "RBAC.mal"
 
 

@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#id: "An abstract version of azureLang."
-#version: "1.0.0"
+
 
 category System {
   
@@ -24,12 +23,7 @@ category System {
     
 }
 
-  asset User {
-    | attemptPhishing
-      -> phish
-    | phish [Exponential(0.1)]
-      -> passwords.obtain
-  }
+ 
 }
 
 category Communication {
@@ -76,19 +70,29 @@ category Communication {
             user info: "Access and authentication will allow writing of data."
             -> write
         
-        & authentiactedDelete
+        & authenticatedDelete
             user info: "Access and authentication will allow deleting of data."
             -> delete
             
         | read
-            info: "An attacker that reads the data and learns the encoded information."
-            -> information.read
+            user info: "An attacker that reads the data and learns the encoded information."
+            -> information.read,
                 containedData.read
+                
+        | write
+            user info: "An attacker that writes the data."
+            -> information.write,
+                containedData.write
+        
+        | delete
+            user info: "An attacker that deletes the data."
+            -> information.delete,
+                containedData.delete
 }
 
 }
 
 associations {
-    Data [data] * <-- Representation --> 0-1 [information] Information
-    Data [containingData] * <-- Containment --> [containedData] Data
+    Data [data] * <-- Representation --> 1 [information] Information
+    Data [containingData] * <-- Containment --> * [containedData] Data
 }
