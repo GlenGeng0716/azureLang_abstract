@@ -16,14 +16,34 @@
 
 
 category System {
+
+  asset Subscription
+    user info: "Any azure account must have a azure subscription in order to "
+    {
+        & access
+            user info: "The Azure subscription has been accessed by an attacker."
+            
+    }
+
+  asset ResourceGroup
+    user info: "In Azure, when creating a resource it must be assigned to a resource group."
+    {
+        | access
+            user info: "Access to the ResourceGroup"
+            -> addresource, delete
+            
+        | addresource
+        
+        | delete
+        
+    }
   
   abstract asset resource
     user info: "In azure, basically anything can be classified as a type of resource."
-  {
-    
-}
-
- 
+    {
+        | access
+    }
+  
 }
 
 category Communication {
@@ -39,7 +59,7 @@ category Communication {
         
         & delete
             user info: "When information is deleted by the attacker, any associated availability costs are incurred. The attacker must, however, delete all data and data flows in order to breach integrity. Thus if malware wipes a hard drive, this might incur no cost as long as a backup is easily accessible."
-}
+        }
     
     asset Data
         user info: "Data is a concrete, syntactic representation of Information at rest."
@@ -92,7 +112,38 @@ category Communication {
 
 }
 
+category Security
+
+{
+    
+    asset Account
+    {
+        | assume
+        user info: "Assume the azure acount."
+            -> subscription.access
+        
+    }
+
+    asset Password
+    {
+        | attemptAccess
+            -> passwordTheft
+        
+        | passwordTheft [Exponential(0.001)]
+            -> access
+            
+        | access @hidden
+            -> account.assume
+    }
+
+}
+
+
+
+
 associations {
+    Account [account] 1 <-- accountsubscription --> * [subscription] Subscription
+    Account [account] 1 <-- Link --> 1 [password] Password
     Data [data] * <-- Representation --> 1 [information] Information
     Data [containingData] * <-- Containment --> * [containedData] Data
 }

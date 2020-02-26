@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.foreseeti.azureLang.test;
+package com.foreseeti.azurelang_abstract.test;
 
 import core.Asset;
 import core.AttackStep;
