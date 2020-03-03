@@ -14,9 +14,34 @@
  * limitations under the License.
  */
 #id: "An abstract version of azureLang."
-#version: "0.0.1"
+#version: "1.0.0"
 
-include "core.mal"
-include "RBAC.mal"
+category System {
+  
+  abstract asset resource {
+    
+}
+    abstract asset Role
+      user info: "In Role Based Access Control (RBAC) system of Azure, the role that be assigned to a security principal determines who can do what from different scopes."
+    {
+    
+}
+    
+    asset ReaderRole
+        user info: "The ReadRole is one of the three basic roles in Azure. It only have read previleges in different scopes."
+        {
+        
+}
+    OwnerRole extends ReaderRole
+    {
+    
+}
 
+    
+    
+ 
+}
 
+associations {
+  
+}

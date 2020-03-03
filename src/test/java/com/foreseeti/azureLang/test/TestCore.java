@@ -39,19 +39,32 @@ public class TestCore extends azureLangTest {
     }
     
     @Test
-    @DisplayName("Test with password.")
+    @DisplayName("Test login behaviour with a known password attached account.")
     public void testwithPassword() {
         var model = new AccountLoginModel();
         
         Attacker attacker = new Attacker();
         attacker.addAttackPoint(model.password.access);
+        attacker.addAttackPoint(model.azureAccount.getaccount);
         attacker.attack();
         
         model.subscription.access.assertCompromisedInstantaneously();
     }
     
     @Test
-    @DisplayName("")
-}
+    @DisplayName("Test login behaviour without any password attached.")
+    public void testwithNoPassword() {
+        var model = new AccountLoginModel();
+        
+        Attacker attacker = new Attacker();
+        attacker.addAttackPoint(model.azureAccount.getaccount);
+        
+        attacker.attack();
+        model.subscription.access.assertUncompromised();
+    }
+    
+   
+    
+    }
 
 

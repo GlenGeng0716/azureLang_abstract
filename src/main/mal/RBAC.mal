@@ -13,28 +13,90 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#id: "An abstract version of azureLang."
-#version: "1.0.0"
+
 
 category System {
-  
-  abstract asset resource {
+
+      asset RoleDefinition
+        user info: "A role definition is a collection of permissions. Reference: https://docs.microsoft.com/en-us/azure/role-based-access-control/overview"
+        {
+            | satisfy
+            user info: "The role definition has been sucessfully used by the attacker."
+    }
     
+      abstract asset Permission
+        user info: "A permission defined in a role definition designates what actions (read, write, delete and other actions) can be taken on where."
+      {
+        & satisfy
+            user info: "The permission has been sucessfully used by the attacker."
+            
+        | calledByAction
+            -> satisfy
 }
-    abstract asset Role
-      user info: "In Role Based Access Control (RBAC) system of Azure, the role that be assigned to a security principal determines who can do what from different scopes."
+      asset SubscriptionPermission extends Permission
+      {
+  //      let applicableActions = subscription*.actionsonsubcription
+}
+  
+      abstract asset Role
+        user info: "In Role Based Access Control (RBAC) system of Azure, the role that be assigned to a security principal determines who can do what from different scopes."
     {
     
 }
     
-    asset ReaderRole
+    abstract asset Action
+        user info: "The action element of a permission descibes the sepecific action."
+    {
+        
+        | performAction
+            -> perform
+            
+        | perform @hidden
+}
+
+    asset SubscriptionReadAction extends Action
+    {
+        | perform
+            -> scopes[Subscription].read
+            
+        | performAction
+}
+
+    asset CancelSubscription extends Action
+            user info: "Cancels the Subcscription."
+        {
+            | perform
+                -> subscription.cancel
+                
+            | performAction
+                user info: "Cacel a subscription"
+        
+    }
+    
+    
+    asset ReaderRole extends Role
         user info: "The ReadRole is one of the three basic roles in Azure. It only have read previleges in different scopes."
         {
+        | assume
+            -> gainReaderPriveliges
         
+        & gainReaderPriveliges
 }
-    OwnerRole extends ReaderRole
+   asset OwnerRole extends Role
     {
+        | assume
+            -> gainOwnerPriveliges
+            
+        & gainOwnerPriveliges
     
+}
+
+   asset ContributorRole extends Role
+    {
+        | assume
+            -> gainContributorPriveliges
+        
+        & gainContributorPriveliges
 }
 
     
@@ -43,5 +105,31 @@ category System {
 }
 
 associations {
-  
+    
+    ReaderRole [reader] * <-- SubscriptionReader --> * [subscription] Subscription
+    OwnerRole [owner] * <-- SubscriptionOwner --> * [subscription] Subscription
+    ContributorRole [contributor] * <-- SubscriptionContributor --> * [subscription] Subscription
+    
+    ReaderRole [reader] * <-- ResourcegroupReader --> * [resourceGroup] ResourceGroup
+    OwnerRole [owner] * <-- ResourcegroupOwner --> * [resourceGroup] ResourceGroup
+    ContributorRole [contributor] * <-- ResourcegroupContributor --> * [resourceGroup] ResourceGroup
+    
+    Permission [permissions] * <-- PermissionAction --> * [actions] Action
+        user info: "Permissions in the role definition contains actions."
+    
+    Subscription [subscription] 0..1 <-- SubscriptionPermssion --> * [subscriptionPermissions] SubscriptionPermission
+         
+    
+        
+    Action [subscriptionActions] * <-- ActionsOnSubscrition --> * [subscription] Subscription
+        user info: "An action defined from a permission can be performed on a subscription."
+    
+    Action [resourcegroupActions] * <-- ActionsOnResourceGroups --> * [resourcegroup] ResourceGroup
+    
+    Action [resourceActions] * <-- ActionsOnResources --> * [resource] Resource
+    
+    Action [ActionsOnScopes] * <-- ActionsOnScopes --> * [scopes] Scope
+
 }
+
+

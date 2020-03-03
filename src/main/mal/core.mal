@@ -17,15 +17,29 @@
 
 category System {
 
-  asset Subscription
-    user info: "Any azure account must have a azure subscription in order to "
+  abstract asset Scope
+    user info: "Azure has a hierachical structure. Different scopes can be subscription, resource group and a single resource."
+  {
+  
+}
+
+  asset Subscription extends Scope
+    user info: "Any azure account must have a azure subscription in order to use Azure services "
     {
+        
         & access
             user info: "The Azure subscription has been accessed by an attacker."
+                -> resourcegroup.access
+                
+        & cancel
+            user info: "The subscription has been canceled by an attacker on purpose."
+            
+        | read
+            
             
     }
 
-  asset ResourceGroup
+  asset ResourceGroup extends Scope
     user info: "In Azure, when creating a resource it must be assigned to a resource group."
     {
         | access
@@ -34,14 +48,18 @@ category System {
             
         | addresource
         
-        | delete
+        | cancel
+            
         
     }
   
-  abstract asset resource
+  abstract asset Resource extends Scope
     user info: "In azure, basically anything can be classified as a type of resource."
     {
-        | access
+        & access
+        
+        & delete
+        
     }
   
 }
@@ -118,7 +136,11 @@ category Security
     
     asset Account
     {
-        | assume
+        | getaccount
+            user info: "In order to log into the Azure portal, people need to get an Azure account. The account bould be signed up (The first signed up account will the owner of all Azure resources and the global admin of Azure AD.) or be assigned one from Azure AD."
+            -> assume
+        
+        & assume
         user info: "Assume the azure acount."
             -> subscription.access
         
@@ -135,6 +157,22 @@ category Security
         | access @hidden
             -> account.assume
     }
+    
+    asset SubscriptionRead extends Action
+        user info: "The SubscriptionRead action is the action that a reader, contributor or owner can read everything under the subscription."
+        developer info: "Reference: https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#general"
+    {
+        perform
+            -> scopes[Subscription].read
+        
+        | performAction
+        user info: "Perform read action on the scope of subscription."
+    
+}
+
+    asset SubscriptionWrite extends Action
+        user info: "The SubscriptionWrite action is the action that a contributor or an owner can  "
+    
 
 }
 
@@ -142,8 +180,14 @@ category Security
 
 
 associations {
-    Account [account] 1 <-- accountsubscription --> * [subscription] Subscription
     Account [account] 1 <-- Link --> 1 [password] Password
+    Account [account] 1 <-- SubscriptionContainment --> * [subscription] Subscription
+    user info: "Every Azure account needs to have a password which allow a person to log into the Azure portal. Under an Azure account, there could be several subscriptions. Subcriptions have different types, for example, free trail, pay-as-you-go and so on."
+    
+    Subscription [subscription] 1 <-- ResourcegroupContainment --> * [resourcegroup] ResourceGroup
+    ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [resource] Resource
     Data [data] * <-- Representation --> 1 [information] Information
     Data [containingData] * <-- Containment --> * [containedData] Data
+    
+
 }
