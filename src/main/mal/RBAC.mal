@@ -17,12 +17,31 @@
 
 category System {
 
-      asset RoleDefinition
-        user info: "A role definition is a collection of permissions. Reference: https://docs.microsoft.com/en-us/azure/role-based-access-control/overview"
+    abstract asset Role
+        user info: "In Role Based Access Control (RBAC) system of Azure, the role that be assigned to a security principal determines who can do what from different scopes."
         {
-            | satisfy
-            user info: "The role definition has been sucessfully used by the attacker."
-    }
+            | assume
+
+}
+
+    asset Reader extends Role
+        user info: "The ReadRole is one of the three basic roles in Azure. It only have read previleges in different scopes."
+        {
+            | readeraccess
+                -> scopes[Subscription].read
+       
+}
+   asset Owner extends Role
+    {
+        
+    
+}
+
+   asset Contributor extends Role
+    {
+
+}
+
     
       abstract asset Permission
         user info: "A permission defined in a role definition designates what actions (read, write, delete and other actions) can be taken on where."
@@ -38,12 +57,6 @@ category System {
   //      let applicableActions = subscription*.actionsonsubcription
 }
   
-      abstract asset Role
-        user info: "In Role Based Access Control (RBAC) system of Azure, the role that be assigned to a security principal determines who can do what from different scopes."
-    {
-    
-}
-    
     abstract asset Action
         user info: "The action element of a permission descibes the sepecific action."
     {
@@ -53,66 +66,73 @@ category System {
             
         | perform @hidden
 }
-
-    asset SubscriptionReadAction extends Action
-    {
-        | perform
-            -> scopes[Subscription].read
-            
-        | performAction
-}
-
-    asset CancelSubscription extends Action
-            user info: "Cancels the Subcscription."
+    
+    asset CreateLoginProfile extends Action
+        user info: "An attacker can user this permission to create a Azure portal login profile for non-root user."
         {
             | perform
-                -> subscription.cancel
+                -> resources[ADUser].attemptCreateLoginProfile
                 
             | performAction
-                user info: "Cacel a subscription"
-        
-    }
-    
-    
-    asset ReaderRole extends Role
-        user info: "The ReadRole is one of the three basic roles in Azure. It only have read previleges in different scopes."
+                user info: "Create a azure portal login profile for a non-root user."
+}
+
+    asset UpdateLoginProfile extends Action
+        user info: "An attacker can use this permission to change the existing login password of other users."
         {
-        | assume
-            -> gainReaderPriveliges
-        
-        & gainReaderPriveliges
+            | perform
+                -> resources[ADUser].attemptUpdateLoginProfile
+                
+            | performAction
+                user info: "Change the existing login password of other users."
 }
-   asset OwnerRole extends Role
-    {
-        | assume
-            -> gainOwnerPriveliges
+  /*  asset DeleteLoginProfile extends Action
+        user info: "An attacker can user this permission to delete the existing login password of other users."
+        {
+            | perform
+                -> resources[ADUser].deleteLoginProfile
+                
+            | performAction
+                user info: "Delete the existing login password of other users/"
+}
+        */
+
+   
+    asset SecurityPrincipal extends Resource
+        user info: "In Azure, RBAC effects on the security principals. Security principals can be an AD user, an AD group, a managed identity or a service principal."
+        {
             
-        & gainOwnerPriveliges
-    
-}
-
-   asset ContributorRole extends Role
-    {
-        | assume
-            -> gainContributorPriveliges
         
-        & gainContributorPriveliges
 }
-
+    asset ADUser extends SecurityPrincipal
+        user info: "The root user of Azure can distribute can creat or invite a Active Directory user in order to let them either read, write, delete or do other actions on different scopes of Auzre."
+        {
+            | assume
+                -> principalReader.readeraccess
+            
+            | attemptCreateLoginProfile
+            
+            | attemptUpdateLoginProfile
+            
+        //    | deleteLoginProfile
+}
+    
+    
     
     
  
 }
 
 associations {
+
+    SecurityPrincipal [principals] * <-- AssociateReader --> * [principalReader] Reader
+            user info: "Assign a reader role on a security principal."
+    Owner [principalOwner] * <-- AssociateOwner --> * [principals] SecurityPrincipal
+    Contributor [principalContributor] * <-- AssociaterContributor --> * [principals] SecurityPrincipal
     
-    ReaderRole [reader] * <-- SubscriptionReader --> * [subscription] Subscription
-    OwnerRole [owner] * <-- SubscriptionOwner --> * [subscription] Subscription
-    ContributorRole [contributor] * <-- SubscriptionContributor --> * [subscription] Subscription
+    Reader [scopeReader] * <-- Read --> * [scopes] Scope
     
-    ReaderRole [reader] * <-- ResourcegroupReader --> * [resourceGroup] ResourceGroup
-    OwnerRole [owner] * <-- ResourcegroupOwner --> * [resourceGroup] ResourceGroup
-    ContributorRole [contributor] * <-- ResourcegroupContributor --> * [resourceGroup] ResourceGroup
+    
     
     Permission [permissions] * <-- PermissionAction --> * [actions] Action
         user info: "Permissions in the role definition contains actions."
@@ -126,9 +146,10 @@ associations {
     
     Action [resourcegroupActions] * <-- ActionsOnResourceGroups --> * [resourcegroup] ResourceGroup
     
-    Action [resourceActions] * <-- ActionsOnResources --> * [resource] Resource
+    Action [resourceActions] * <-- ActionsOnResources --> * [resources] Resource
     
-    Action [ActionsOnScopes] * <-- ActionsOnScopes --> * [scopes] Scope
+    Action [ScopeActions] * <-- ActionsOnScopes --> * [scopes] Scope
+    
 
 }
 

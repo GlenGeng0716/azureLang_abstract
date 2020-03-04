@@ -33,8 +33,15 @@ category System {
                 
         & cancel
             user info: "The subscription has been canceled by an attacker on purpose."
+                -> resourcegroup.delete
             
         | read
+            user info: "Read a current subscription"
+                -> resourcegroup.read
+                
+        | write
+            user info: "Add a new subscription."
+                -> resourcegroup.addresource
             
             
     }
@@ -44,11 +51,13 @@ category System {
     {
         | access
             user info: "Access to the ResourceGroup"
-            -> addresource, delete
+            
             
         | addresource
         
-        | cancel
+        | delete
+        
+        | read
             
         
     }
@@ -56,11 +65,13 @@ category System {
   abstract asset Resource extends Scope
     user info: "In azure, basically anything can be classified as a type of resource."
     {
-        & access
+    
+}
+    abstract asset AzureServiceResource extends Resource
+        user info: "Azure provides different kinds of services in a cloud computing environment: Computing, AI, Storage, etc."
+        {
         
-        & delete
-        
-    }
+}
   
 }
 
@@ -162,7 +173,7 @@ category Security
         user info: "The SubscriptionRead action is the action that a reader, contributor or owner can read everything under the subscription."
         developer info: "Reference: https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#general"
     {
-        perform
+        | perform
             -> scopes[Subscription].read
         
         | performAction
@@ -171,7 +182,27 @@ category Security
 }
 
     asset SubscriptionWrite extends Action
-        user info: "The SubscriptionWrite action is the action that a contributor or an owner can  "
+        user info: "The SubscriptionWrite action is the action that a contributor or an owner can modify the content in the subscription."
+        developer info: "Reference: https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#general"
+        {
+           | perform
+                -> scopes[Subscription].write
+           
+           | performAction
+           user info: "Perform write action in the scope of subscription."
+            
+}
+
+    asset CancelSubscription extends Action
+               user info: "Cancels the Subcscription."
+           {
+               | perform
+                   -> subscription.cancel
+                   
+               | performAction
+                   user info: "Cacel a subscription"
+           
+}
     
 
 }
@@ -188,6 +219,9 @@ associations {
     ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [resource] Resource
     Data [data] * <-- Representation --> 1 [information] Information
     Data [containingData] * <-- Containment --> * [containedData] Data
+    
+    Account [user] 1 <-- ReaderAccount --> 1 [reader] Reader
+    Reader [reader] 1 <-- ReadSubcription --> * [subscriptionRead] SubscriptionRead
     
 
 }
