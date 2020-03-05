@@ -41,7 +41,7 @@ category System {
                 
         | write
             user info: "Add a new subscription."
-                -> resourcegroup.addresource
+                -> resourcegroup.write
             
             
     }
@@ -50,14 +50,16 @@ category System {
     user info: "In Azure, when creating a resource it must be assigned to a resource group."
     {
         | access
-            user info: "Access to the ResourceGroup"
+            user info: "Access to the ResourceGroup will lead to the possible attack steps such as read, write and delete."
             
             
-        | addresource
+        | write
+            -> azureResources.write
         
         | delete
         
         | read
+            -> azureResources.read
             
         
     }
@@ -67,9 +69,15 @@ category System {
     {
     
 }
-    abstract asset AzureServiceResource extends Resource
+     asset AzureServiceResource extends Resource
         user info: "Azure provides different kinds of services in a cloud computing environment: Computing, AI, Storage, etc."
         {
+        
+        | read
+        
+        | write
+        
+        | delete
         
 }
   
@@ -146,6 +154,7 @@ category Security
 {
     
     asset Account
+        user info: "The owner of Azure account. He/She will automatically be the global adminstrator and has the right to create or invite users in Active directory."
     {
         | getaccount
             user info: "In order to log into the Azure portal, people need to get an Azure account. The account bould be signed up (The first signed up account will the owner of all Azure resources and the global admin of Azure AD.) or be assigned one from Azure AD."
@@ -204,6 +213,15 @@ category Security
            
 }
     
+    asset ResourceGroupRead extends Action
+        user info: "The ResourceGroupRead action is the action that a reader can read all the resource in a resource group."
+        {
+            | perform
+                -> scopes[ResourceGroup].read
+                
+            | performAction
+}
+    
 
 }
 
@@ -216,12 +234,12 @@ associations {
     user info: "Every Azure account needs to have a password which allow a person to log into the Azure portal. Under an Azure account, there could be several subscriptions. Subcriptions have different types, for example, free trail, pay-as-you-go and so on."
     
     Subscription [subscription] 1 <-- ResourcegroupContainment --> * [resourcegroup] ResourceGroup
-    ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [resource] Resource
+    ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [azureResources] AzureServiceResource
     Data [data] * <-- Representation --> 1 [information] Information
     Data [containingData] * <-- Containment --> * [containedData] Data
     
-    Account [user] 1 <-- ReaderAccount --> 1 [reader] Reader
-    Reader [reader] 1 <-- ReadSubcription --> * [subscriptionRead] SubscriptionRead
+ //   Account [user] 1 <-- ReaderAccount --> 1 [reader] Reader
+ //   Reader [reader] 1 <-- ReadSubcription --> * [subscriptionRead] SubscriptionRead
     
 
 }
