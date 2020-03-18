@@ -35,10 +35,10 @@ limitations under the License.
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.install.skip>true</maven.install.skip>
     <malcompiler.version>0.1.0-SNAPSHOT</malcompiler.version>
-    <kernelcad.version>1.6.1</kernelcad.version>
+    <kernelcad.version>1.6.2-SNAPSHOT</kernelcad.version>
     <corelib.version>${kernelcad.version}</corelib.version>
     <simulator.version>${kernelcad.version}</simulator.version>
-    <mal.file>azureLang_abstract.mal</mal.file>
+    <mal.file>azurelang_abstract.mal</mal.file>
     <mal.securicad.package>com.foreseeti.azurelang_abstract</mal.securicad.package>
     <mal.reference.package>com.foreseeti.azurelang_abstract.test</mal.reference.package>
   </properties>
@@ -128,7 +128,7 @@ limitations under the License.
           <release>11</release>
           <showWarnings>true</showWarnings>
           <showDeprecation>true</showDeprecation>
-          <compilerArgument>-Xlint:all</compilerArgument>
+          <compilerArgument>-Xlint:all,-cast</compilerArgument>
         </configuration>
       </plugin>
       <plugin>

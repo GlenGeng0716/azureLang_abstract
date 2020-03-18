@@ -31,24 +31,77 @@ category System {
                 -> scopes[Subscription].read,
                     executees[SubscriptionRead].performAction,
                     scopes[ResourceGroup].read,
-                    executees[ResourceGroupRead].performAction
-                
-            
-       
+                    executees[ResourceGroupRead].performAction,
+                    scopes[AzureServiceResource].read,
+                    executees[AzureServiceRead].performAction
+                   
 }
    asset Owner extends Role
+    user info: "In RBAC system, if an user has been assigned an owner role, he has the rights to do everything including read, write and delete on the scope that it was assigned. Meanwhile, owner can also grant acess to others, for example, create a login profile to a new Active Directory user."
     {
         | owneraccess
-        -> scopes[Subscription].read,
-            executees[SubscriptionRead].performAction
-    
+        ->
+        // Owneraccess leads to read actions
+            scopes[Subscription].read,
+            executees[SubscriptionRead].performAction,
+            scopes[ResourceGroup].read,
+            executees[ResourceGroupRead].performAction,
+            scopes[AzureServiceResource].read,
+            executees[AzureServiceRead].performAction,
+            
+        // Owneraccess leads to write actions
+            scopes[Subscription].write,
+            executees[SubscriptionWrite].performAction,
+            scopes[ResourceGroup].write,
+            executees[AzureServiceWrite].performAction,
+            scopes[AzureServiceResource].write,
+            executees[AzureServiceWrite].performAction,
+            
+            
+        // Owneraccess leads to cancel subscription actions and delete resource group actions
+            scopes[Subscription].cancel,
+            executees[CancelSubscription].performAction,
+            scopes[ResourceGroup].delete,
+            executees[ResourceGroupDelete].performAction,
+            scopes[AzureServiceResource].delete,
+            executees[AzureServiceDelete].performAction
+            
+        | grantaccess
+            -> executees[AddLoginProfile].performAction,
+             executees[UpdateLoginProfile].performAction,
+             executees[DeleteLoginProfile].performAction
+            
 }
 
    asset Contributor extends Role
+    user info: "Contributor has exactly the same previleges on the scope like the owner does, except can grant access to a new user."
     {
         | contributoraccess
-        -> scopes[Subscription].read,
-            executees[SubscriptionRead].performAction
+        ->
+        // Contributoreraccess leads to read actions
+            scopes[Subscription].read,
+            executees[SubscriptionRead].performAction,
+            scopes[ResourceGroup].read,
+            executees[ResourceGroupRead].performAction,
+            scopes[AzureServiceResource].read,
+            executees[AzureServiceRead].performAction,
+            
+        // Contributoraccess leads to write actions
+            scopes[Subscription].write,
+            executees[SubscriptionWrite].performAction,
+            scopes[ResourceGroup].write,
+            executees[AzureServiceWrite].performAction,
+            scopes[AzureServiceResource].write,
+            executees[AzureServiceWrite].performAction,
+            
+            
+        // Contributoraccess leads to cancel subscription actions and delete resource group actions
+            scopes[Subscription].cancel,
+            executees[CancelSubscription].performAction,
+            scopes[ResourceGroup].delete,
+            executees[ResourceGroupDelete].performAction,
+            scopes[AzureServiceResource].delete,
+            executees[AzureServiceDelete].performAction
 
 }
 
@@ -62,10 +115,7 @@ category System {
         | calledByAction
             -> satisfy
 }
-      asset SubscriptionPermission extends Permission
-      {
-  //      let applicableActions = subscription*.actionsonsubcription
-}
+
   
     abstract asset Action
         user info: "The action element of a permission descibes the sepecific action."
@@ -77,11 +127,11 @@ category System {
         | perform @hidden
 }
     
-    asset CreateLoginProfile extends Action
+    asset AddLoginProfile extends Action
         user info: "An attacker can user this permission to create a Azure portal login profile for non-root user."
         {
             | perform
-                -> resources[ADUser].attemptCreateLoginProfile
+                -> resources[ADUser].attemptAddLoginProfile
                 
             | performAction
                 user info: "Create a azure portal login profile for a non-root user."
@@ -96,37 +146,46 @@ category System {
             | performAction
                 user info: "Change the existing login password of other users."
 }
- /*   asset DeleteLoginProfile extends Action
+    asset DeleteLoginProfile extends Action
         user info: "An attacker can user this permission to delete the existing login password of other users."
         {
             | perform
-                -> resources[ADUser].deleteLoginProfile
+                -> resources[ADUser].attemptdeleteLoginProfile
                 
             | performAction
-                user info: "Delete the existing login password of other users/"
+                user info: "Delete the existing login password of other users"
 }
-     */
-
-   
+        
     asset SecurityPrincipal extends Resource
         user info: "In Azure, RBAC effects on the security principals. Security principals can be an AD user, an AD group, a managed identity or a service principal."
         {
-            
         
 }
     asset ADUser extends SecurityPrincipal
         user info: "The root user of Azure can distribute can creat or invite a Active Directory user in order to let them either read, write, delete or do other actions on different scopes of Auzre."
         {
+    
             | assume
                 -> principalReader.readeraccess,
                     principalOwner.owneraccess,
                     principalContributor.contributoraccess
             
-            | attemptCreateLoginProfile
+            | attemptAddLoginProfile
+                -> createLoginProfile
             
             | attemptUpdateLoginProfile
+                -> LoginProfileUpdated
             
-        //    | deleteLoginProfile
+            | attemptdeleteLoginProfile
+                -> LoginProfileDeleted
+            
+            & createLoginProfile
+                user info: "Crate a new login profile for this user, and use it to assum this user."
+                -> assume
+                
+            & LoginProfileUpdated
+            
+            & LoginProfileDeleted
 }
     
     
@@ -139,8 +198,8 @@ associations {
 
     SecurityPrincipal [principals] * <-- AssociateReader --> * [principalReader] Reader
             user info: "Assign a reader role on a security principal."
-    Owner [principalOwner] * <-- AssociateOwner --> * [principals] SecurityPrincipal
-    Contributor [principalContributor] * <-- AssociaterContributor --> * [principals] SecurityPrincipal
+    Owner [principalOwner] * <-- AssociateOwner --> * [principalOwner] SecurityPrincipal
+    Contributor [principalContributor] * <-- AssociaterContributor --> * [principalContributor] SecurityPrincipal
     
     Reader [scopeReader] * <-- Read --> * [scopes] Scope
     Owner [scopeOwner] * <-- Own --> * [scopes] Scope
@@ -150,20 +209,20 @@ associations {
     
     Permission [permissions] * <-- PermissionAction --> * [actions] Action
         user info: "Permissions in the role definition contains actions."
-    
-    Subscription [subscription] 0..1 <-- SubscriptionPermssion --> * [subscriptionPermissions] SubscriptionPermission
-         
-    
-        
+                     
     Action [subscriptionActions] * <-- ActionsOnSubscrition --> * [subscription] Subscription
         user info: "An action defined from a permission can be performed on a subscription."
     
     Action [resourcegroupActions] * <-- ActionsOnResourceGroups --> * [resourcegroup] ResourceGroup
     
-    Action [resourceActions] * <-- ActionsOnResources --> * [resources] Resource
+    Action [resourceActions] * <-- ActionsOnResources --> * [azureresources] AzureServiceResource
     
-    Action [ScopeActions] * <-- ActionsOnScopes --> * [scopes] Scope
+    Action [scopeActions] * <-- ActionsOnScopes --> * [scopes] Scope
     
+    Action [ResourceActions] * <-- ActionOnResources --> * [resources] Resource
+    
+    SecurityPrincipal [principals] * <-- SecurityPrincipalScope --> * [scopes] Scope
+        
     Action [executees] * <-- Execution --> * [executors] Role
 
 }

@@ -35,30 +35,35 @@ category System {
             user info: "The subscription has been canceled by an attacker on purpose."
                 -> resourcegroup.delete
             
-        | read
+        & read
             user info: "Read a current subscription"
                 -> resourcegroup.read
                 
-        | write
+        & write
             user info: "Add a new subscription."
                 -> resourcegroup.write
             
+        E ResourceLock
+            user info: "A Resource lock can help to prevent a subscritpion from cancelation."
+            <- 
             
     }
 
   asset ResourceGroup extends Scope
     user info: "In Azure, when creating a resource it must be assigned to a resource group."
     {
-        | access
+        & access
             user info: "Access to the ResourceGroup will lead to the possible attack steps such as read, write and delete."
             
             
-        | write
+        & write
             -> azureResources.write
         
-        | delete
+        & delete
         
-        | read
+            -> azureResources.delete
+        
+        & read
             -> azureResources.read
             
         
@@ -73,11 +78,13 @@ category System {
         user info: "Azure provides different kinds of services in a cloud computing environment: Computing, AI, Storage, etc."
         {
         
-        | read
+        & read
         
-        | write
+        & write
         
-        | delete
+        & delete
+        
+        & access
         
 }
   
@@ -214,10 +221,56 @@ category Security
 }
     
     asset ResourceGroupRead extends Action
-        user info: "The ResourceGroupRead action is the action that a reader can read all the resource in a resource group."
+        user info: "The ResourceGroupRead action is the action that a reader/owner/contributor of the subscription can read all the resource in a resource group."
         {
             | perform
                 -> scopes[ResourceGroup].read
+                
+            | performAction
+}
+
+    asset ResourceGroupWrite extends Action
+        user info: "The ResourceGroupWrite action is the action that an owner or an contributor can create or modify all the resources in a resource group."
+        {
+            | perform
+                -> scopes[ResourceGroup].write
+                
+            | performAction
+}
+
+    asset ResourceGroupDelete extends Action
+        user info: "The ResourceGroupDelete action is the action that an owner or an contributor can delete a resource group and the resources contained in the group will be deleted at the same time."
+        {
+            | perform
+                -> scopes[ResourceGroup].delete
+                
+            | performAction
+}
+
+
+    asset AzureServiceRead extends Action
+        user info: "The Azure Service resource will be read. For exmaple configuration and setting of a Virtual Machine will be read or what kinds of data contained in a blob container will be read."
+        {
+            | perform
+                -> scopes[AzureServiceResource].read
+                
+            | performAction
+}
+
+    asset AzureServiceWrite extends Action
+        user info: "The Azure Service resource will be writed. An attacker can change the setting of a virtual machine, IP address and subnets in a virtual network, rules network security group and so on. "
+        {
+            | perform
+                -> scopes[AzureServiceResource].write
+                
+            | performAction
+}
+
+    asset AzureServiceDelete extends Action
+        user info: "The Azure Service will be deleted by the attacker which make the service no longer usable."
+        {
+            | perform
+                -> scopes[AzureServiceResource].delete
                 
             | performAction
 }
