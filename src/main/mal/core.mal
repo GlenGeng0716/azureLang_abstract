@@ -43,9 +43,11 @@ category System {
             user info: "Add a new subscription."
                 -> resourcegroup.write
             
-        E ResourceLock
+        # ResourceLock
             user info: "A Resource lock can help to prevent a subscritpion from cancelation."
-            <- 
+            -> cancel
+            
+        
             
     }
 

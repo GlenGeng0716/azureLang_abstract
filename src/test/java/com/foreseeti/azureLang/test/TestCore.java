@@ -63,8 +63,6 @@ public class TestCore extends azureLangTest {
         model.subscription.access.assertUncompromised();
     }
     
-   
-    
-    }
+}
 
 

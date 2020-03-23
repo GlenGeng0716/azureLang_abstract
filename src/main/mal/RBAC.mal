@@ -64,12 +64,12 @@ category System {
             scopes[ResourceGroup].delete,
             executees[ResourceGroupDelete].performAction,
             scopes[AzureServiceResource].delete,
-            executees[AzureServiceDelete].performAction
+            executees[AzureServiceDelete].performAction,
             
-        | grantaccess
-            -> executees[AddLoginProfile].performAction,
-             executees[UpdateLoginProfile].performAction,
-             executees[DeleteLoginProfile].performAction
+        // Owneraccess can grant acess to a new AD user or an existed AD user.
+            executees[AddLoginProfile].performAction,
+            executees[UpdateLoginProfile].performAction,
+            executees[DeleteLoginProfile].performAction
             
 }
 
@@ -134,7 +134,7 @@ category System {
                 -> resources[ADUser].attemptAddLoginProfile
                 
             | performAction
-                user info: "Create a azure portal login profile for a non-root user."
+                
 }
 
     asset UpdateLoginProfile extends Action
@@ -179,13 +179,13 @@ category System {
             | attemptdeleteLoginProfile
                 -> LoginProfileDeleted
             
-            & createLoginProfile
+            | createLoginProfile
                 user info: "Crate a new login profile for this user, and use it to assum this user."
                 -> assume
                 
-            & LoginProfileUpdated
+            | LoginProfileUpdated
             
-            & LoginProfileDeleted
+            | LoginProfileDeleted
 }
     
     
@@ -226,5 +226,3 @@ associations {
     Action [executees] * <-- Execution --> * [executors] Role
 
 }
-
-
