@@ -1,0 +1,277 @@
+/*
+ * Copyright 2019 Foreseeti AB
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+category Networking {
+
+    asset Network
+    {
+    }
+    
+    asset Internet extends Network
+    {
+    }
+    
+    asset Vnet extends Network
+    {
+    }
+    
+    asset Subnet extends Resource
+    {
+        let privateIPAddresses = (addressSpaces.subAddressSpaces*)[PrivateIPAddresses]
+        let privateInterfaces = privateIPAddresses().networkInterface /\ networkInterfaces
+        let publicIPAddresses = privateIPAddresses().associatedPublicIPAddresses.associatedPrivateIPAddresses
+        let publicInterfaces = publicIPAddresses().networkInterface /\ networkInterfaces
+        let routes = (routeTable \/ network.routeTable).routes
+    }
+    
+    asset VPNConnection
+        user info: "An Azure Site-to-Site VPN provides connection between azure virtual network and remote work."
+    {
+    }
+    
+    abstract asset AddressSpace extends Resource
+        user info: "A range of IP address"
+    {
+    }
+    
+    asset PublicIPAddresses extends AddressSpace
+    {
+    }
+    
+    asset PrivateIPAddresses extends AddressSpace
+    {
+    }
+    
+    asset FloatingIP extends PublicIPAddresses
+    {
+    }
+    
+    asset RouteTable extends Resource
+    {
+    }
+    
+    asset Route extends Resource
+    {
+    }
+    
+    abstract asset Gateway extends Resource
+    {
+    }
+    
+    asset NATGateway extends Gateway
+        user info: "A network address translation (NAT) gateway can be used to enable instances in a private subnet to connect to the internet or other Azure services but prevent the internet from initiating a connection with those instances."
+    {
+    }
+    
+    asset VPNGateway extends Gateway
+        user info: "A VPN gateway is a specific type of virtual network gateway that is used to send encrypted traffic between an Azure virtual network and an on-premises location over the public Internet."
+    {
+    }
+    asset PortRange extends Resource
+        user info: "TCP port ranges."
+    {
+    }
+    
+    asset VNetPeering
+        user info: "A Vnet peering connection is a network connection between two virtual networks that enables you communicate direcetly in between."
+    {
+    }
+    
+    asset RESTAPI
+        user info: "A REST API is an Azure-controlled service endpoint accepting API calls to the Azure infrastructure."
+    {
+        | invoke
+    }
+    
+    asset NetworkInterface extends Resource
+    {
+        // Interface subnets
+        let privateSubnets = addressSpaces.superAddressSpaces*.subnets /\ subnets
+        let publicSubnets = addressSpaces.associatedPublicIPAddresses.associatedPrivateIPAddresses.superAddressSpaces*.subnets /\ subnets
+        
+        // Routing-permitted services
+        let privateNetworkInterfaceRoutes = privateSubnets().routes()
+        let publicNetworkInterfaceRoutes = publicSubnets().routes()
+        let reachableRoutes = privateNetworkInterfaceRoutes() \/ publicNetworkInterfaceRoutes()
+        let sourcePublicSubnetExternalNetwork = publicNetworkInterfaceRoutes().gateways.externalNetwork
+        let sourcePrivateSubnetExternalNetwork = privateNetworkInterfaceRoutes().gateways[NATGateway].routes.routeTable.subnets.network[Vnet].subnets.routeTable.routes.gateways.externalNetwork
+        let vpnConnection = reachableRoutes().gateways[VPNGateway].vpnConnection
+        let externalNetwork = sourcePublicSubnetExternalNetwork() \/ sourcePrivateSubnetExternalNetwork()
+        let internalNetwork = externalNetwork().inboundGateways.internalNetwork \/ vpnConnection().vpnGateway.internalNetwork
+        let routeReachablePublicInterfaces = internalNetwork().subnets.publicInterfaces()
+        let routeReachablePrivateSubnets = reachableRoutes().localSubnets \/ reachableRoutes().peeredVnet.subnets \/ vpnConnection().vpnGateway.internalNetwork.subnets
+        let routeReachablePrivateInterfaces = routeReachablePrivateSubnets().privateInterfaces()
+        let routeReachableNetworkInterfaces = routeReachablePrivateInterfaces() \/ routeReachablePublicInterfaces()
+        let routeReachableServices = routeReachableNetworkInterfaces().services
+        
+        // Network-Security-group-permitted services
+        let outNSGRules = networkSecurityGroups.outboundRules()
+        let inNSGRules = networkSecurityGroups.inboundRules()
+        let NSGReachableServices = outNSGRules().reachableServices() \/ inNSGRules().reachableServices()
+        
+        //Reachable services are the intersection of route permitted services and NSG permitted services
+        let reachableServices = routeReachableServices() /\ NSGReachableServices()
+        
+        | transmit @hidden
+            -> transmitRequest,
+                transmitResponse
+        
+        | transmitRequest
+            user info: "Tha attacker is able to transmit requests from the network interface."
+                -> //Connect to services that are reachable through routing, and which are permitted by NSG rules/
+                reachableServices().networkRequestConnect,
+                
+                //Also connect to services on local host
+                services.networkRequestConnect,
+                
+                // Connect tot all service APIs throught external routes or directly over the internet
+                externalNetwork()[Internet].restAPIs.invoke,
+                privateSubnets().network[Internet].restAPIs.invoke
+                
+        // Routing-permitted network interfaces
+        let destinationSubnets = privateSubnets() \/ publicSubnets()
+        let gateways = destinationSubnets().network.(outboundGateways.externalNetwork.inboundGateways \/ outboundGateways[VPNGateway].vpnConnection.vpnGateway)
+        let routes = destinationSubnets().routes \/ destinationSubnets().network[Vnet].routes \/ gateways().routes
+        let sourceSubnets = routes().routeTable.(subnets \/ networks[Vnet].subnets)
+        let sourceNetworkInterfaces = sourceSubnets().(privateInterfaces() \/ publicInterfaces())
+        
+        // Outbound-NSG permitted network interfaces and ports
+        let NSGRulesWithMyIPInDestination = addressSpaces.superAddressSpaces*.outboundNSGRules \/ addressSpaces.associatedPublicIPAddresses.associatedPrivateIPAddresses.superAddressSpaces*.outboundNSGRules
+        let NSGRulesWithMyNSGInDestination = networkSecurityGroups.outboundNSGRules
+        let NSGRulesWithMyNetworkInterfaceAsDestination = NSGRulesWithMyIPInDestination() \/ NSGRulesWithMyNSGInDestination()
+        let networkInterfacesWithPermissiveOutboundNSGRules = NSGRulesWithMyNetworkInterfaceAsDestination().containingGroup.networkInterfaces
+        let portRangesPermittedByMyOutboundNSGRules = NSGRulesWithMyNetworkInterfaceAsDestination().portRange.subPortRanges*
+            
+        // Inbound-NSG permitted network interfaces and ports
+        let myInboundNSGRules = networkSecurityGroups.containedRules[InboundSecurityGroupRule]
+        let addressSpacesPermittedByMyInboundNSGRules = myInboundNSGRules().sourceIPAddresses.subAddressSpaces*.subAddressSpaces[PrivateIPAddresses] \/ myInboundNSGRules().sourceIPAddresses.subAddressSpaces*.subAddressSpaces[PrivateIPAddresses].associatedPublicIPAddresses.associatedPrivateIPAddresses
+        let NSGPermittedByMyInboundNSGRules = myInboundNSGRules().sourceSecurityGroup
+        let networkInterfacesPermittedByMyInboundNSGRules = addressSpacesPermittedByMyInboundNSGRules().networkInterface \/ NSGPermittedByMyInboundNSGRules().networkInterfaces
+        let portRangesPermittedByMyInboundNSGRules = myInboundNSGRules().portRange.subPortRanges*
+        
+        let NSGPermittedPortRanges = portRangesPermittedByMyInboundNSGRules() /\ portRangesPermittedByMyOutboundNSGRules()
+        let networkInterfacesWithAtLeastOnePermissiblePortRangeByNSG = NSGPermittedPortRanges().NSGRules[InboundSecurityGroupRule].containingGroup.networkInterfaces
+       
+        let NSGPermittedIPRangeNetworkInterfaces = networkInterfacesWithPermissiveOutboundNSGRules() /\ networkInterfacesPermittedByMyInboundNSGRules()
+        
+        let NSGPermittedNetworkInterfaces = NSGPermittedIPRangeNetworkInterfaces() /\ networkInterfacesWithAtLeastOnePermissiblePortRangeByNSG()
+        
+        | transmitResponse
+    }
+
+}
+
+category Security {
+
+    asset NetworkSecurityGroup
+    {
+        let outboundRules = containedRules[OutboundSecurityGroupRule]
+        let inboundRules = containedRules[InboundSecurityGroupRule]
+        let services = networkInterfaces.services
+        
+        & satisfy
+        
+        | calledByInterface
+            -> satisfy
+            
+        | calledbyApplication
+            -> satisfy
+    }
+    
+    abstract asset NetworkSecurityGroupRule
+    {
+        let portRangeServices = portRange.subPortRanges*.services
+    }
+    
+    asset OutboundSecurityGroupRule extends NetworkSecurityGroupRule
+    {
+        let ipAddressServices = (destIPAddresses.subAddressSpaces*)[PrivateIPAddresses].networkInterface.services
+        let reachableServices = ipAddressServices() /\ portRangeServices()
+    }
+    
+    asset InboundSecurityGroupRule extends NetworkSecurityGroupRule
+    {
+        let ipAddressServices = containingGroup.networkInterfaces.services
+        let reachableServices = ipAddressServices() /\ portRangeServices()
+    }
+}
+
+associations {
+    // Routing
+    
+    Gateway [outboundGateways] * <-- Gateway --> 1 [internalNetwork] Network
+    Gateway [inboundGateways] * <-- Gateway --> 1 [externalNetwork] Network
+    
+    Subnet [subnets] * <-- Subnets --> * [network] Network
+        user info: "Subnets need to belong to virtual network."
+    Subnet [subnets] * <-- SubnetRouteTable --> 0..1 [routeTable] RouteTable
+        user info: "Every subnet has a route to manage communications. This is usually the route table of Vnet."
+    RouteTable [routeTable] 1..* <-- VPCrouteTable --> * [networks] Network
+        user info: "Every route table contains a local route for communication within the Vnet over IPV4."
+    RouteTable [routeTable] 1 <-- RouteTableRoutes --> * [routes] Route
+        user info: "Routes in route table are to direct communications."
+    Route [routes] * <-- GatewayRoute --> * [gateways] Gateway
+    Route [routes] * <-- PeeredVnet --> * [peeredVnet] Vnet
+    Route [routes] * <-- LocalSubnet --> * [localSubnets] Subnet
+        user info: "Routes in the route table can point to the gateway or to the peered Vnet or to the local subnets."
+    Internet [internet] 1 <-- ContainerInternetConnection --> * [restAPIs] RESTAPI
+    Gateway [vpnGateway] * <-- SiteToSiteConnection --> * [vpnConnection] VPNConnection
+        user info: "Both ends of the Azure Site-to-site connection are associated with gateways."
+    Gateway [NATGateway] * <-- PublicIPAddress --> 0..1 [publicIP] PublicIPAddresses
+        user info: "A NAT Gateway must be associated with a piblic IP address."
+    PublicIPAddresses [publicIP] * <-- AzurePool --> 1 [network] Network
+        
+    // Network Interface, PortRange, AddresSpace
+    
+    Instance [instance] * <-- InstanceInterface --> * [networkInterfaces] NetworkInterface
+        user info: "An instance can have many network interfaces"
+    Application [services] * <-- ServicePorts --> * [portRanges] PortRange
+        user info: "Services are hosted on ports. For example, RDP on port 398."
+    PortRange [superPortRanges] * <-- PortRangeContainment --> * [subPortRanges] PortRange
+        user info: "Port ranges amy be parts of other port ranges."
+    NetworkInterface [networkInterface] * <-- NetInterfaceAddressSpaces --> * [addressSpaces] PrivateIPAddresses
+    NetworkInterface [networkInterfaces] * <-- NetInterfaceSubnet --> * [subnets] Subnet
+        user info: "Network interfaces belong to subnets."
+    Subnet [subnets] * <-- SubnetAddressSpaces --> * [addressSpaces] AddressSpace
+        user info: "Subnets have IP address spaces."
+    AddressSpace [superAddressSpaces] * <-- AddressSpaceContainment --> * [subAddressSpaces] AddressSpace
+        user info: "Address spaces may be sub or super spaces of each other."
+    PublicIPAddresses [associatedPublicIPAddresses] 0..1 <-- AssociatedIPAddresses --> 0..1 [associatedPrivateIPAddresses] PrivateIPAddresses
+        user info: "We resolve an external DNS hostname to the public IP address of the instance outside the network."
+    Application [services] * <-- NetInterfaceServices --> * [networkInterfaces] NetworkInterface
+        user info: "In turn, services are associated with network interfaces."
+        
+    //Network Security Group
+    NetworkSecurityGroup [networkSecurityGroups] * <-- AccessControl --> * [networkInterfaces] NetworkInterface
+        user info: "Access control to instances (or to be more precise, network interfaces) is done via NSGs."
+    NetworkSecurityGroup [containingGroup] 1 <-- Ownership --> * [containedRules] NetworkSecurityGroupRule
+        user info: "A singnel NSG can have many security rules."
+    NetworkSecurityGroupRule [NSGRules] * <-- NSGPortRange --> 1 [portRange] PortRange
+        user info: "NSG rules are associated with ports."
+    NetworkSecurityGroupRule [NSGRules] * <-- NSGPortRange --> 1 [addressspace] AddressSpace
+        user info: "NSG rules are associated with IP addresses."
+    NetworkSecurityGroup [sourceSecurityGroup] 0..1 <-- RuleSourceNSG --> * [inboundNSGRules] InboundSecurityGroupRule
+        user info: "The inbound NSG rules determine what instances in the source security group can send."
+    NetworkSecurityGroup [destSecurityGroup] 0..1 <-- RuleDestNSG --> * [outboundNSGRules] OutboundSecurityGroupRule
+        user info: "The outbound NSG rules determine what instances in the destination security group can send."
+    AddressSpace [sourceIPAddresses] 0..1 <-- RuleSourceIPNSG --> * [inboundNSGRules] InboundSecurityGroupRule
+    AddressSpace [destIPAddresses] 0..1 <-- RuleDestIPNSG --> * [outboundNSGRules] OutboundSecurityGroupRule
+    
+    
+
+}
+
+ 

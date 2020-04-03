@@ -256,6 +256,6 @@ public class TestRBAC extends azureLangTest {
                model.owner.owneraccess.assertCompromisedInstantaneously();
                model.aduser2.attemptAddLoginProfile.assertCompromisedInstantaneously();
           //     model.aduser2.LoginProfileUpdated.assertCompromisedInstantaneously();
-          //xs     model.aduser2.LoginProfileDeleted.assertCompromisedInstantaneously();
+          //     model.aduser2.LoginProfileDeleted.assertCompromisedInstantaneously();
            }
 }

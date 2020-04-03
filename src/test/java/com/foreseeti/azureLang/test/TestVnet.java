@@ -13,11 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#id: "An abstract version of azureLang."
-#version: "0.0.1"
+package com.foreseeti.azurelang_abstract.test;
 
-include "core.mal"
-include "RBAC.mal"
-include "vnet.mal"
+import core.Asset;
+import core.Attacker;
+import core.AttackStep;
+import core.Defense;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+public class TestVnet extends azureLangTest{
+    
+private static class VnetWithinVnetModel {
+    public final Vnet net = new Vnet("vnet");
+    public final Subnet srcSubnet = new Subnet("srcSubnet");
+    public final RouteTable srcRouteTable = new RouteTable("srcRouteTable");
+    public final AddressSpace srcAddressSpace = new PrivateIPAddresses("srcAddressSpace");
+    
+}
+    
+}
 
 

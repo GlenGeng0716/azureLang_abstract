@@ -76,6 +76,71 @@ category System {
     {
     
 }
+   asset Application extends Resource
+   {
+       | localConnect
+           user info: "An attacker with low privilege access on the exectuting instance is assumed to be able to locally interact with the application."
+           -> localAccess
+           
+        | networkRequestConnect
+            user info: "The attacker has successfully sent a request to the appliaciton."
+            -> networkAccess
+            
+        | networkRespondConnect [Exponential(0.001)]
+            user info: "An attacker may be able to respond to requests submitted by an application."
+            
+        | authenticate
+            -> localAccess,
+                networkAccess
+        
+        & localAccess
+            -> access
+            
+        & networkAccess
+            -> access
+            
+        | access
+            -> read,
+                modify,
+                deny,
+                shellInstance.connect
+                
+        | codeExecution
+            -> access,
+                nonShellInstance.connect,
+                executionAccount.getaccount
+                
+        | read
+        
+        | modify
+        
+        | deny
+   }
+   
+   asset Instance extends Resource
+   {
+        let applications = (nonShellApplications \/ shellApplications)
+        
+        | connect
+            -> highPrivilegeAccess,
+                lowPrivilegeAccess
+                
+        & highPrivilegeAccess
+            user info: "High privilege access to the instance means that the attacker can access any application and transmit from the instance."
+            -> applications().access,
+           //     networkInterfaces.transmit,
+                terminate
+                
+        & lowPrivilegeAccess
+            user info: "Low privilege access means that the attacker can connect to any local application."
+            -> applications().localConnect
+         //       netwrokInterfaces.transmit
+                
+        | terminate
+            -> applications().deny
+        
+   }
+   
      asset AzureServiceResource extends Resource
         user info: "Azure provides different kinds of services in a cloud computing environment: Computing, AI, Storage, etc."
         {
@@ -284,17 +349,20 @@ category Security
 
 
 associations {
+
+// Account, subscription and resource group
     Account [account] 1 <-- Link --> 1 [password] Password
     Account [account] 1 <-- SubscriptionContainment --> * [subscription] Subscription
     user info: "Every Azure account needs to have a password which allow a person to log into the Azure portal. Under an Azure account, there could be several subscriptions. Subcriptions have different types, for example, free trail, pay-as-you-go and so on."
-    
     Subscription [subscription] 1 <-- ResourcegroupContainment --> * [resourcegroup] ResourceGroup
     ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [azureResources] AzureServiceResource
     Data [data] * <-- Representation --> 1 [information] Information
     Data [containingData] * <-- Containment --> * [containedData] Data
-    
- //   Account [user] 1 <-- ReaderAccount --> 1 [reader] Reader
- //   Reader [reader] 1 <-- ReadSubcription --> * [subscriptionRead] SubscriptionRead
-    
 
+// Application and instances
+    Application [shellApplications] * <-- ShellApplicationInstance --> 0..1 [shellInstance] Instance
+    Application [nonShellApplications] * <-- NonShellApplicationInstance --> 0..1 [nonShellInstance] Instance
+        user info: "An instance can host several shell and non-shell applications on it."
+    Application [privilegedApplication] * <-- ApplicationGetaccount --> * [executionAccount] Account
+    
 }
