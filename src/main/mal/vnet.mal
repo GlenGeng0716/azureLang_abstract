@@ -139,7 +139,11 @@ category Networking {
                 
                 // Connect tot all service APIs throught external routes or directly over the internet
                 externalNetwork()[Internet].restAPIs.invoke,
-                privateSubnets().network[Internet].restAPIs.invoke
+                privateSubnets().network[Internet].restAPIs.invoke,
+                
+                //for debugging
+                routeReachableServices().debugRouteConnect,
+                NSGReachableServices().debugNSGConnect
                 
         // Routing-permitted network interfaces
         let destinationSubnets = privateSubnets() \/ publicSubnets()
@@ -163,7 +167,7 @@ category Networking {
         let portRangesPermittedByMyInboundNSGRules = myInboundNSGRules().portRange.subPortRanges*
         
         let NSGPermittedPortRanges = portRangesPermittedByMyInboundNSGRules() /\ portRangesPermittedByMyOutboundNSGRules()
-        let networkInterfacesWithAtLeastOnePermissiblePortRangeByNSG = NSGPermittedPortRanges().NSGRules[InboundSecurityGroupRule].containingGroup.networkInterfaces
+        let networkInterfacesWithAtLeastOnePermissiblePortRangeByNSG = NSGPermittedPortRanges().nsgRules[InboundSecurityGroupRule].containingGroup.networkInterfaces
        
         let NSGPermittedIPRangeNetworkInterfaces = networkInterfacesWithPermissiveOutboundNSGRules() /\ networkInterfacesPermittedByMyInboundNSGRules()
         
@@ -259,9 +263,9 @@ associations {
         user info: "Access control to instances (or to be more precise, network interfaces) is done via NSGs."
     NetworkSecurityGroup [containingGroup] 1 <-- Ownership --> * [containedRules] NetworkSecurityGroupRule
         user info: "A singnel NSG can have many security rules."
-    NetworkSecurityGroupRule [NSGRules] * <-- NSGPortRange --> 1 [portRange] PortRange
+    NetworkSecurityGroupRule [nsgRules] * <-- NSGPortRange --> 1 [portRange] PortRange
         user info: "NSG rules are associated with ports."
-    NetworkSecurityGroupRule [NSGRules] * <-- NSGPortRange --> 1 [addressspace] AddressSpace
+    NetworkSecurityGroupRule [nsgRules] * <-- NSGPortRange --> 1 [addressSpace] AddressSpace
         user info: "NSG rules are associated with IP addresses."
     NetworkSecurityGroup [sourceSecurityGroup] 0..1 <-- RuleSourceNSG --> * [inboundNSGRules] InboundSecurityGroupRule
         user info: "The inbound NSG rules determine what instances in the source security group can send."

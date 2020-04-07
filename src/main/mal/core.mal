@@ -115,6 +115,10 @@ category System {
         | modify
         
         | deny
+        
+        // The following attack steps are for debugging
+        | debugNSGConnect @debug
+        | debugRouteConnect @debug
    }
    
    asset Instance extends Resource
@@ -128,7 +132,7 @@ category System {
         & highPrivilegeAccess
             user info: "High privilege access to the instance means that the attacker can access any application and transmit from the instance."
             -> applications().access,
-           //     networkInterfaces.transmit,
+                networkInterfaces.transmit,
                 terminate
                 
         & lowPrivilegeAccess
