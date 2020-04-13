@@ -84,7 +84,8 @@ category System {
            
         | networkRequestConnect
             user info: "The attacker has successfully sent a request to the appliaciton."
-            -> networkAccess
+            -> networkAccess,
+            (networkInterfaces.networkSecurityGroups.containedRules[InboundSecurityGroupRule] /\ portRanges.superPortRanges*.nsgRules[InboundSecurityGroupRule]).containingGroup.calledByApplication
             
         | networkRespondConnect [Exponential(0.001)]
             user info: "An attacker may be able to respond to requests submitted by an application."

@@ -119,8 +119,8 @@ category Networking {
         
         // Network-Security-group-permitted services
         let outNSGRules = networkSecurityGroups.outboundRules()
-        let inNSGRules = networkSecurityGroups.inboundRules()
-        let NSGReachableServices = outNSGRules().reachableServices() \/ inNSGRules().reachableServices()
+        let inNSGRules = networkSecurityGroups.inboundNSGRules \/ addressSpaces.superAddressSpaces*.inboundNSGRules
+        let NSGReachableServices = outNSGRules().reachableServices() /\ inNSGRules().reachableServices()
         
         //Reachable services are the intersection of route permitted services and NSG permitted services
         let reachableServices = routeReachableServices() /\ NSGReachableServices()
@@ -191,7 +191,7 @@ category Security {
         | calledByInterface
             -> satisfy
             
-        | calledbyApplication
+        | calledByApplication
             -> satisfy
     }
     
@@ -203,7 +203,7 @@ category Security {
     asset OutboundSecurityGroupRule extends NetworkSecurityGroupRule
     {
         let ipAddressServices = (destIPAddresses.subAddressSpaces*)[PrivateIPAddresses].networkInterface.services
-        let reachableServices = ipAddressServices() /\ portRangeServices()
+        let reachableServices = (ipAddressServices() \/ destSecurityGroup.services())  /\ portRangeServices()
     }
     
     asset InboundSecurityGroupRule extends NetworkSecurityGroupRule

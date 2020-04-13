@@ -91,12 +91,12 @@ private static class VnetWithinVnetModel {
             rdpService.addNetworkInterfaces(destNetworkInterface);
         }
         
-        if (https) {
+        if (https == true) {
             httpsService.addPortRanges(port443);
             httpsService.addNetworkInterfaces(destNetworkInterface);
         }
         
-        if (featureNSGs) {
+        if (featureNSGs == true) {
             //source NSG
             srcNetworkInterface.addNetworkSecurityGroups(srcNSG);
             srcNSG.addContainedRules(srcNSGRule);
@@ -107,7 +107,7 @@ private static class VnetWithinVnetModel {
             else if (srcNSGPort == 3389) {
                 srcNSGRule.addPortRange(port3389);
             }
-            else {
+            else if (srcNSGPort == 443) {
                 srcNSGRule.addPortRange(port443);
                 
             }
@@ -170,8 +170,8 @@ private static class VnetWithinVnetModel {
     }
     //Below are the test cases
     @Test
-    @DisplayName("Test SSH connect a Linux VM without Network Security groups.")
-    public void testNoNetworkSecurityGroup()
+    @DisplayName("Test SSH service connect a Linux VM without Network Security group.")
+    public void testSSHNoNetworkSecurityGroup()
     {
         var model = new VnetWithinVnetModel(true, false, false, 22, 22);
         
@@ -186,8 +186,68 @@ private static class VnetWithinVnetModel {
         
     }
     
-
+    @Test
+    @DisplayName("Test RDP service connect to a Windows VM without Network Security group.")
+    public void testRDPNoNetworkSecurityGroup()
+    {
+        var model = new VnetWithinVnetModel(false, false, false, 3389, 3389);
+        
+        var attacker = new Attacker();
+        attacker.addAttackPoint(model.srcInstance.highPrivilegeAccess);
+        attacker.attack();
+        model.srcNetworkInterface.transmit.assertCompromisedInstantaneously();
+        model.srcNetworkInterface.transmitRequest.assertCompromisedInstantaneously();
+        model.assertSSHReached(false, false);
+        model.assertRDPReached(false, true);
+        model.assertHTTPSReached(false, false);
+    }
     
+    @Test
+    @DisplayName("Test SSH service connect to a Linux VM with Network Security group.")
+    public void testSSHWithNetworkSecurityGroup()
+    {
+        var model = new VnetWithinVnetModel(true, false, true, 22, 22);
+        
+        var attacker = new Attacker();
+        attacker.addAttackPoint(model.srcInstance.highPrivilegeAccess);
+        attacker.attack();
+        model.srcNetworkInterface.transmit.assertCompromisedInstantaneously();
+        model.srcNetworkInterface.transmitRequest.assertCompromisedInstantaneously();
+        model.assertSSHReached(true, true);
+        model.assertHTTPSReached(false, false);
+        model.assertRDPReached(false, false);
+        
+    }
+    
+    @Test
+    @DisplayName("Test RDP service connect to a Windows VM with Network Security group.")
+    public void testRDPWithNetworkSecurityGroup()
+    {
+        var model = new VnetWithinVnetModel(false, false, true, 3389, 3389);
+        
+        var attacker = new Attacker();
+        attacker.addAttackPoint(model.srcInstance.highPrivilegeAccess);
+        attacker.attack();
+        model.srcNetworkInterface.transmit.assertCompromisedInstantaneously();
+        model.srcNetworkInterface.transmitRequest.assertCompromisedInstantaneously();
+        model.assertSSHReached(false, false);
+        model.assertHTTPSReached(false, false);
+        model.assertRDPReached(true, true);
+    }
+
+    @Test
+    @DisplayName("Test Network Security Group inbound block.")
+    public void testNSGInboundBlock() {
+        var model = new VnetWithinVnetModel(true, true, true, 22, 443);
+        
+        var attacker = new Attacker();
+        attacker.addAttackPoint(model.srcInstance.highPrivilegeAccess);
+        attacker.attack();
+        
+        model.srcNetworkInterface.transmitRequest.assertCompromisedInstantaneously();
+        model.assertSSHReached(false, true);
+        model.assertHTTPSReached(false, true);
+    }
 }
 
 
