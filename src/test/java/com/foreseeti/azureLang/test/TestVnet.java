@@ -237,9 +237,11 @@ private static class VnetWithinVnetModel {
 
     @Test
     @DisplayName("Test Network Security Group inbound block.")
-    public void testNSGInboundBlock() {
+    public void testNSGInboundBlock()
+    {
         var model = new VnetWithinVnetModel(true, true, true, 22, 443);
-        
+        // The port number of inbound and outbound network work security rule needs to be identical.
+        //Otherwise the services will not be accessed enven if the route reaches.
         var attacker = new Attacker();
         attacker.addAttackPoint(model.srcInstance.highPrivilegeAccess);
         attacker.attack();
@@ -247,6 +249,21 @@ private static class VnetWithinVnetModel {
         model.srcNetworkInterface.transmitRequest.assertCompromisedInstantaneously();
         model.assertSSHReached(false, true);
         model.assertHTTPSReached(false, true);
+    }
+    
+    @Test
+    @DisplayName("Test Network HTTPS services.")
+    public void testHTTPSService()
+    {
+        var model = new VnetWithinVnetModel(true, true, true, 443, 443);
+        
+        var attacker = new Attacker();
+        attacker.addAttackPoint(model.srcInstance.highPrivilegeAccess);
+        attacker.attack();
+        
+        model.srcNetworkInterface.transmitRequest.assertCompromisedInstantaneously();
+        model.assertSSHReached(false, true);
+        model.assertHTTPSReached(true, true);
     }
 }
 

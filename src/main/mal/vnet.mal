@@ -274,8 +274,4 @@ associations {
     AddressSpace [sourceIPAddresses] 0..1 <-- RuleSourceIPNSG --> * [inboundNSGRules] InboundSecurityGroupRule
     AddressSpace [destIPAddresses] 0..1 <-- RuleDestIPNSG --> * [outboundNSGRules] OutboundSecurityGroupRule
     
-    
-
 }
-
- 
