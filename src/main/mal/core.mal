@@ -292,13 +292,10 @@ associations {
     user info: "Every Azure account needs to have a password which allow a person to log into the Azure portal. Under an Azure account, there could be several subscriptions. Subcriptions have different types, for example, free trail, pay-as-you-go and so on."
     Subscription [subscription] 1 <-- ResourcegroupContainment --> * [resourcegroup] ResourceGroup
     ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [azureResources] AzureServiceResource
+    
+//Data and information
     Data [data] * <-- Representation --> 1 [information] Information
     Data [containingData] * <-- Containment --> * [containedData] Data
 
-// Application and instances
-    Application [shellApplications] * <-- ShellApplicationInstance --> 0..1 [shellInstance] Instance
-    Application [nonShellApplications] * <-- NonShellApplicationInstance --> 0..1 [nonShellInstance] Instance
-        user info: "An instance can host several shell and non-shell applications on it."
-    Application [privilegedApplication] * <-- ApplicationGetaccount --> * [executionAccount] Account
-    
+
 }

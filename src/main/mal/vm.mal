@@ -90,22 +90,105 @@ category System {
    
    asset VirtualMachine extends Instance
    {
-    
+        | runVirtualMachine
+            -> connect
    }
    
-   asset LinuxVM extends Instance
+   asset LinuxVM extends VirtualMachine
+   {
+        
+   }
+   
+   asset WindowsVM extends VirtualMachine
    {
    
    }
    
-   asset WindowsVM extedns Instance
+   abstract asset Disk extends Resource
+    user info: "In Azure, there are two types of disks that can be attached to a virtual mahince: Operating system disk and temporary disk"
    {
-   
+        | attach
+                
    }
    
+   asset OSDisk extends Disk
+    user info: "The ram memory of OS disk has been optimized for operating systems. Generally applications and data are not stroed in the OS disk. Os disk is only for the operating system."
+   {
+        | attach
+            -> operatingSystem.create
+   }
+   
+   asset DataDisk extends Disk
+    user info: "A data disk is a VHD that is attachde to a VM to store application data."
+   {
+        | attach
+            -> data.read,
+                data.write
+        | detach
+            -> data.delete
+        
+   }
+   
+   asset OperatingSystem
+    user info: "Any virtual machine must have a correspondiong operating sytem."
+    {
+        | create
+            user info: "Choose a suitable OS and the meta data is stored in the OS Disk."
+    }
    
 }
 
+category Security {
+
+    asset SSHKey
+    {
+        | compromised
+            -> linuxVM.highPrivilegeAccess
+    }
+    
+    asset RDPFile
+    {
+    
+    }
+    
+
+    asset DeleteVM extends Action
+    {
+        | perform
+            -> resources[VirtualMachine].terminate
+        
+        | performAction
+    }
+    
+    asset RunVirtualMachine extends Action
+    {
+        | perform
+            -> resources[VirtualMachine].runVirtualMachine
+            
+        | performAction
+    }
+    
+    asset AttachDisk extends Action
+    {
+        | perform
+            -> resources[Disk].attach
+    }
+    
+}
+
 associations {
-// left blank
+    Application [shellApplications] * <-- ShellApplicationInstance --> 0..1 [shellInstance] Instance
+    Application [nonShellApplications] * <-- NonShellApplicationInstance --> 0..1 [nonShellInstance] Instance
+        user info: "An instance can host several shell and non-shell applications on it."
+    Application [privilegedApplication] * <-- ApplicationGetaccount --> * [executionAccount] Account
+    Application [privilegedApplication] * <-- ApplicationGetUser --> * [executionUser] ADUser
+    
+    SSHKey [sshKey] * <-- SSHKeyAssociation --> * [linuxVM] LinuxVM
+    user info: "A SSH key needs to be assigned if we use SSH connect."
+    RDPFile [rdpFile] * <-- RDPFileAssociation --> * [windowsVM] WindowsVM
+    user info: "A RDP file needs to be assigned if we user RDP protocal to connenct."
+    
+    Disk [disk] * <-- DiskVirtualMachine --> * [virtualMachine] VirtualMachine
+    OSDisk [osDisk] * <-- OSDiskOperatingSystem --> * [operatingSystem] OperatingSystem
+    DataDisk [dataDisk] * <-- DiskContainingData --> * [data] Data
 }

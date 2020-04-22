@@ -187,6 +187,14 @@ category System {
             
             | LoginProfileDeleted
 }
+
+    asset ManagedIdentity extends SecurityPrincipal
+        user info: "The managed identities for Azure resources feature in Azure Active Directory (Azure AD) solves this problem. The feature provides Azure services with an automatically managed identity in Azure AD. "
+        developer info: "https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/"
+        {
+        
+        
+        }
     
     
     
