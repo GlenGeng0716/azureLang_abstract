@@ -24,15 +24,101 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class TestVM extends azureLangTest {
-    private static class SimpleSSHConnectModel {
+    private static class VMOwnerModel1 {
         
-        //A virtual machine running a SSH service
+        //Define a AD user has the owner role of a virutal machine
         public final VirtualMachine vm = new LinuxVM("vm");
-        public final ADUser user1 = new ADUser("user1");
-        public final ADUser user2 = new ADUser("user2");
-        public final ADUser rootuser = new ADUser("rootuser");
-        public final Application sshd = new Application("sshd");
+        public final ADUser user = new ADUser("user");
+        public final Owner vmowner = new Owner("vmowner");
+        public final Subscription subscription = new Subscription("subscription");
+        public final ResourceGroup resourcegroup = new ResourceGroup("resourcegroup");
         
+        public final RunVirtualMachine runVM = new RunVirtualMachine("runvm");
+        
+        public VMOwnerModel1() {
+            user.addPrincipalOwner(vmowner);
+            vmowner.addExecutees(runVM);
+            runVM.addResources(vm);
+        }
+    }
+    
+    @Test
+        @DisplayName("Test an owner role directly have effect on virtual machine.")
+    public void testVMOwnerModel1() {
+        var model = new VMOwnerModel1();
+        
+        Attacker attacker = new Attacker();
+        attacker.addAttackPoint(model.user.assume);
+        attacker.attack();
+        
+        model.subscription.write.assertUncompromised();
+        model.subscription.read.assertUncompromised();
+        model.subscription.cancel.assertUncompromised();
+        model.vm.connect.assertCompromisedInstantaneously();
+    }
+    
+    private static class VMOwnerModel2 {
+        public final VirtualMachine vm = new LinuxVM("vm");
+        public final ADUser user = new ADUser("user");
+        public final Owner subscriptionowner = new Owner("subscriptionowner");
+        public final Subscription subscription = new Subscription("subscription");
+        public final ResourceGroup vmresourcegroup = new ResourceGroup("vmresourcegroup");
+        
+        public VMOwnerModel2() {
+            user.addPrincipalOwner(subscriptionowner);
+            subscriptionowner.addScopes(subscription);
+            subscription.addResourcegroup(vmresourcegroup);
+            vmresourcegroup.addResource(vm);
+        }
+        
+    }
+    
+    @Test
+    @DisplayName("Susbcription owner can connect to a virtual machine.")
+    public void testVMOwnerModel2() {
+        var model = new VMOwnerModel2();
+        
+        Attacker attacker = new Attacker();
+        attacker.addAttackPoint(model.user.assume);
+        attacker.attack();
+        
+        model.subscriptionowner.owneraccess.assertCompromisedInstantaneously();
+        model.subscription.access.assertCompromisedInstantaneously();
+        model.vmresourcegroup.access.assertCompromisedInstantaneously();
+        model.vm.connect.assertCompromisedInstantaneously();
+    }
+    
+    private static class VMReaderModel1 {
+        
+        //Define a AD user has the owner role of a virutal machine
+        public final VirtualMachine vm = new LinuxVM("vm");
+        public final ADUser user = new ADUser("user");
+        public final Reader vmreader = new Reader("vmreader");
+        public final Subscription subscription = new Subscription("subscription");
+        public final ResourceGroup resourcegroup = new ResourceGroup("resourcegroup");
+        
+        public final RunVirtualMachine runVM = new RunVirtualMachine("runvm");
+        public final TerminateVirtualMachine terminatevm = new TerminateVirtualMachine("terminatevm");
+        
+        public VMReaderModel1() {
+            user.addPrincipalReader(vmreader);
+            vmreader.addExecutees(runVM);
+            vmreader.addExecutees(terminatevm);
+            runVM.addResources(vm);
+        }
+    }
+    
+    @Test
+    @DisplayName("VM reader cannot terminate a VM.")
+    public void testVMReaderModel1() {
+        var model = new VMReaderModel1();
+        
+        Attacker attacker = new Attacker();
+        attacker.addAttackPoint(model.user.assume);
+        attacker.attack();
+        
+        model.vm.connect.assertUncompromised();
+        model.vm.terminate.assertUncompromised();
     }
 }
 

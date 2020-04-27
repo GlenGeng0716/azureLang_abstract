@@ -43,9 +43,7 @@ category System {
             user info: "Add a new subscription."
                 -> resourcegroup.write
             
-        # ResourceLock
-            user info: "A Resource lock can help to prevent a subscritpion from cancelation."
-            -> cancel
+
             
         
             
@@ -56,14 +54,15 @@ category System {
     {
         & access
             user info: "Access to the ResourceGroup will lead to the possible attack steps such as read, write and delete."
-            
+            -> resource[VirtualMachine].connect
             
         & write
             -> azureResources.write
         
         & delete
         
-            -> azureResources.delete
+            -> azureResources.delete,
+                resource[VirtualMachine].terminate
         
         & read
             -> azureResources.read
@@ -216,7 +215,7 @@ category Security
                user info: "Cancels the Subcscription."
            {
                | perform
-                   -> subscription.cancel
+                   -> scopes[Subscription].cancel
                    
                | performAction
                    user info: "Cacel a subscription"
@@ -291,8 +290,8 @@ associations {
     Account [account] 1 <-- SubscriptionContainment --> * [subscription] Subscription
     user info: "Every Azure account needs to have a password which allow a person to log into the Azure portal. Under an Azure account, there could be several subscriptions. Subcriptions have different types, for example, free trail, pay-as-you-go and so on."
     Subscription [subscription] 1 <-- ResourcegroupContainment --> * [resourcegroup] ResourceGroup
-    ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [azureResources] AzureServiceResource
-    
+    ResourceGroup [testresourceGroup] 1 <-- abstractresourceContainment --> * [azureResources] AzureServiceResource
+    ResourceGroup [resourceGroup] 1 <-- resourceContainment --> * [resource] Resource
 //Data and information
     Data [data] * <-- Representation --> 1 [information] Information
     Data [containingData] * <-- Containment --> * [containedData] Data

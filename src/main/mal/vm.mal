@@ -74,7 +74,7 @@ category System {
                 
         & highPrivilegeAccess
             user info: "High privilege access to the instance means that the attacker can access any application and transmit from the instance."
-            -> applications().access,
+            ->  applications().access,
                 networkInterfaces.transmit,
                 terminate
                 
@@ -164,6 +164,22 @@ category Security {
     {
         | perform
             -> resources[VirtualMachine].runVirtualMachine
+            
+        | performAction
+    }
+    
+    asset ConnectVirtualMachine extends Action
+    {
+        | perform
+            -> resources[VirtualMachine].connect
+        
+        | performAction
+    }
+    
+    asset TerminateVirtualMachine extends Action
+    {
+        | perform
+            -> resources[VirtualMachine].terminate
             
         | performAction
     }

@@ -41,6 +41,9 @@ category System {
     {
         | owneraccess
         ->
+        // A general definition of access to the subscription
+            scopes[Subscription].access,
+            
         // Owneraccess leads to read actions
             scopes[Subscription].read,
             executees[SubscriptionRead].performAction,
@@ -69,7 +72,11 @@ category System {
         // Owneraccess can grant acess to a new AD user or an existed AD user.
             executees[AddLoginProfile].performAction,
             executees[UpdateLoginProfile].performAction,
-            executees[DeleteLoginProfile].performAction
+            executees[DeleteLoginProfile].performAction,
+            
+        // Virtual machine part
+            executees[RunVirtualMachine].performAction,
+            executees[TerminateVirtualMachine].performAction
             
 }
 
@@ -78,6 +85,9 @@ category System {
     {
         | contributoraccess
         ->
+        // A general definition of access to the subscription
+            scopes[Subscription].access,
+        
         // Contributoreraccess leads to read actions
             scopes[Subscription].read,
             executees[SubscriptionRead].performAction,
@@ -209,9 +219,9 @@ associations {
     Owner [principalOwner] * <-- AssociateOwner --> * [principalOwner] SecurityPrincipal
     Contributor [principalContributor] * <-- AssociaterContributor --> * [principalContributor] SecurityPrincipal
     
-    Reader [scopeReader] * <-- Read --> * [scopes] Scope
-    Owner [scopeOwner] * <-- Own --> * [scopes] Scope
-    Contributor [scopeContributor] * <-- Contribute --> * [scopes] Scope
+    Reader [Reader] * <-- ReaderAccess --> * [scopes] Scope
+    Owner [Owner] * <-- OwnerAccess --> * [scopes] Scope
+    Contributor [Contributor] * <-- ContributorAccess --> * [scopes] Scope
     
     
     
