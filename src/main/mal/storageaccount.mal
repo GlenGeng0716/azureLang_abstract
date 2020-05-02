@@ -1,6 +1,10 @@
 category System {
 
-        
+    asset StorageAccount extends Resource
+        user info: "Storage accounts are classified as blob storage account or general storage account."
+    {
+    }
+    
     asset BlobContainer extends Resource
         user info: "A blob contanier is a virtual environment in Azure's blob storgae service for blob object stroage in a Azure cloud infrastructure."
         {
@@ -16,9 +20,9 @@ category System {
                 
             | deleteContainerPermission @hidden
                 user info: "At least one policy grants an attacker-controlled identity permissions to delete blobs in the container."
-                -> deleteContainter
+                -> deleteContainer
             
-            & listBlob
+            & listBlobContainer
                 user info: "An attacher has gained the sufficient permission and network access to list blob containers."
                 -> blobs.listPermission
             
@@ -56,31 +60,21 @@ category System {
 
 category Networking {
     
-    asset BlobAPI extends RestAPI
+    asset BlobAPI extends RESTAPI
     {
         | invoke
             user info: "Invoke the blob API by effectively connecting to Blob service over Internet."
-            -> storageAccounts.assume
+            -> blobContainers.connect
     }
 }
 
-Category Security {
-    
-    asset StorageAccount extends Account
-    {
-        | assume
-            -> connect
-            
-        | connect
-            -> blobContainers.connect
+category Security {
         
-    }
-    
     asset ListBlobContainer extends Action
         user info: "GET Container (List blobs), HEAD Container (determine if a container exists and you have the permission to access it)"
         {
             | perform
-                -> resources[BlobContainer].listContainerPermission
+                -> resources[BlobContainer].listBlobContainerPermission
                 
             | performAction
                 user info: "Determins if a container exists and if you have access to it."
@@ -130,8 +124,8 @@ Category Security {
 
 associations {
     
-    BlobAPI [blobAPI] 1 <-- API --> * [storageAccounts] StorageAccount
-    StrogeAccount [storageAccount] 1 <-- Contained --> * [blobContainers] BlobContainer
-    BlobContainer [blobContainer] 1 <-- Storage --> * blobs [Blob]
+    BlobAPI [blobAPI] 1 <-- API --> * [blobContainers] BlobContainer
+    StorageAccount [storageAccount] 1 <-- Contained --> * [blobContainers] BlobContainer
+    BlobContainer [blobContainer] 1 <-- Storage --> * [blobs] Blob
         user info: "The total volum of data and number of blob object you can store in a Blob container are unlimited. Indiidual blobs and range in size form a minimum of 0 bytes to a maximum of 4.75 TB."
 }

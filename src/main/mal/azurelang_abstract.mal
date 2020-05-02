@@ -20,5 +20,5 @@ include "core.mal"
 include "RBAC.mal"
 include "vnet.mal"
 include "vm.mal"
-
+include "storageaccount.mal"
 
